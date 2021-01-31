@@ -108,7 +108,17 @@ class AI:
             AI.Weather()
     #-------------------------------Wikipedia---------------------------------------#
     def Wikipedia():
-
+        AI.Speak("Bạn vui lòng nói từ khóa muốn tìm hiểu")
+        you = AI.Ear()
+        contents = wikipedia.summary(you).split(".")
+        AI.Speak("Theo như mình tìm hiểu được thì")
+        AI.Speak(contents[:2])
+        AI.Speak("Vẫn còn đấy, bạn muốn nghe tiếp chứ")
+        you = AI.Ear()
+        if "có" in you or "" in you:
+            AI.Speak(contents[2:])
+        else:
+            AI.Speak("Nếu cậu không muốn nghe tiếp thì thôi vậy")
         time.sleep(3)
     #----------------------------main-----------------------------------------------------#
     def main():
@@ -175,39 +185,14 @@ class AI:
                 AI.GGSearch(you)
             elif "thời tiết" in you or "Thời tiết" in you:
                 AI.Weather()
-            elif "là gì" in you:
+            elif "định nghĩa" in you or "ý nghĩa" in you:
                 AI.Wikipedia()
             elif "chờ" in you:
                 AI.Sleep()
             else:
                 print("Tớ không hiểu cậu đang nói gì. Cậu muốn nói gì không?")
                 AI.Speak("Tớ không hiểu cậu đang nói gì. Cậu muốn nói gì không?")
-                time.sleep(1)
 
 if __name__=="__main__":
     bot=AI
     bot.main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
