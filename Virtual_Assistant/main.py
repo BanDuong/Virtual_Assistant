@@ -17,16 +17,34 @@ import random
 import re # tách domain để tìm kiếm web
 import pyowm # weather
 import time
+from tkinter import *
+from PIL import Image,ImageTk
+from bs4 import BeautifulSoup
+import imaplib
+import threading
+
+
+def Creat_widgets():
+    t = Tk()
+    t.title("Rybert")
+    t.geometry("250x120+600+190")
+    t.resizable(width=False, height=False)
+    img = ImageTk.PhotoImage(Image.open("picAI.png"))
+    panel = Label(t, image=img)
+    panel.pack(side="bottom", fill="both", expand="yes")
+    t.mainloop()
 
 class AI:
-    dem=0
+    dem = 0
     #--------Nói--------------#
     def Speak(text):
         tts=gTTS(text,lang="vi")
+        #tts.speed(0.5)
         filename="voice.mp3"
         tts.save(filename)
         playsound.playsound(filename)
         os.remove(filename)
+
     #--------Nghe-------------#
     def Ear():
         robot_ear = speech_recognition.Recognizer()
@@ -39,17 +57,28 @@ class AI:
             except:
                 you = ""
         return you
+
     #------------------Sleep------------------#
     def Sleep():
-        AI.Speak("Bạn cần bao lâu")
+        AI.Speak("Mình có thể chờ bạn tối đa là 30 giây. Bạn cần mình chờ bao lâu?")
         time.sleep(1)
-        you = AI.Ear()
+        you = AI.Ear().replace(",",".")
+        print(you)
         if you:
-            AI.Speak("OK mình đợi bạn")
-            time.sleep(float(you))
+            tmp=you.split(" ")
+            for i in tmp:
+                if "giây" in you and i.isascii() and 0 < float(i) <= 30:
+                    AI.Speak("OK mình sẽ chờ bạn "+i+" giây")
+                    time.sleep(float(i))
+                    break
+        elif "tối đa" in you or "Tối đa" in you:
+            AI.Speak("Ok mình sẽ chờ bạn 30 giây")
+            time.sleep(30)
         else:
             AI.Speak("Mình sẽ chờ cậu 5 giây")
             time.sleep(5)
+        AI.Speak("Bạn cần mình giúp gì không?")
+
     #----------Google_Search----------#
     def GGSearch(you):
         reg_ex = re.search('tìm kiếm (.+)',str(you).lower())
@@ -63,22 +92,40 @@ class AI:
         else:
             AI.Speak("Bạn muốn tìm kiếm gì")
         time.sleep(7)
+
+    #-----------------Email--------------------------#
+    def Email():
+        user = "suppersiroo@gmail.com"
+        pw = "lovestory99"
+        imap = imaplib.IMAP4_SSL("imap.gmail.com")
+        imap.login(user, pw)
+        status, messages = imap.select("INBOX")
+        messages = int(messages[0])
+        AI.Speak("Hộp thư đến hiện tại có %d thư chưa đọc, bạn có muốn xem hay không." %messages)
+        you=AI.Ear()
+        if "có" in you:
+            AI.Speak("đang được mở")
+            webbrowser.open("https://mail.google.com/mail/u/0/#inbox")
+        else:
+            AI.Speak("bạn không muốn xem thì thôi vậy. Bạn cần mình giúp gì nữa không?")
+
     #-----------------Weather------------------------#
     def Weather():
         AI.Speak("Bạn muốn xem thời tiết ở đâu vậy")
         city=AI.Ear()
         ow_url = "http://api.openweathermap.org/data/2.5/weather?"
-        if city == "":
-            city="Hà Nội"
+        if city == "": # link get location IP: https://dashboard.ipdata.co/
+            r = requests.get('https://api.ipdata.co?api-key=f430d9660d9f5e8a11541a3ac01f09113dd8a0d2a910e4811301bd00').json()
+            city=r['city']+','+r['country_name']
         api_key = "78a4fd552139da5e53068e203eaa4a37"
         call_url = ow_url + "appid=" + api_key + "&q=" + city + "&units=metric"
         response = requests.get(call_url)
         data = response.json()
         if data["cod"] != "404":
             city_res = data["main"]
-            current_temperature = city_res["temp"]
-            current_pressure = city_res["pressure"]
-            current_humidity = city_res["humidity"]
+            temperature = city_res["temp"]
+            pressure = city_res["pressure"]
+            humidity = city_res["humidity"]
             suntime = data["sys"]
             sunrise = datetime.datetime.fromtimestamp(suntime["sunrise"])
             sunset = datetime.datetime.fromtimestamp(suntime["sunset"])
@@ -98,14 +145,15 @@ class AI:
                    minrise=sunrise.minute,
                    hourset=sunset.hour,
                    minset=sunset.minute,
-                   temp=current_temperature,
-                   pressure=current_pressure,
-                   humidity=current_humidity)
+                   temp=temperature,
+                   pressure=pressure,
+                   humidity=humidity)
             AI.Speak(content)
-            time.sleep(3)
+            time.sleep(2)
         else:
             AI.Speak("Không tìm thấy địa chỉ của bạn")
             AI.Weather()
+
     #-------------------------------Wikipedia---------------------------------------#
     def Wikipedia():
         AI.Speak("Bạn vui lòng nói từ khóa muốn tìm hiểu")
@@ -118,8 +166,66 @@ class AI:
         if "có" in you or "" in you:
             AI.Speak(contents[2:])
         else:
-            AI.Speak("Nếu cậu không muốn nghe tiếp thì thôi vậy")
-        time.sleep(3)
+            AI.Speak("Nếu cậu không muốn nghe tiếp thì thôi vậy. Bạn cần mình giúp gì nữa không")
+        time.sleep(2)
+
+    #----------------------News-------------------------------------#
+    def News():
+        baseUrl = "https://baomoi.com"
+        res = requests.get(baseUrl + "/tin-moi.epi")
+        soup = BeautifulSoup(res.content, "html.parser")
+        heading = soup.findAll("h4", class_="story__heading")
+        titles = [title.find('a').attrs["title"] for title in heading]
+        AI.Speak("Sau đây là một số tin tức mới trong ngày.")
+        for i in titles:
+            AI.Speak(i)
+            time.sleep(1)
+        AI.Speak("bạn có muốn đọc tin tức không?")
+        you=AI.Ear()
+        if "có" in you:
+            webbrowser.open(baseUrl + "/tin-moi.epi")
+        else:
+            AI.Speak("Nếu bạn không muốn đọc thì thôi vậy. Bạn cần mình giúp gì nữa không")
+        time.sleep(2)
+
+    #---------------------CoVid---------------------------------#
+    def CoVid():
+        AI.Speak("Bạn chờ một chút để mình cập nhật dữ liệu nhé.")
+        res = requests.get("https://www.worldometers.info/coronavirus/#countries")
+        soup = BeautifulSoup(res.content, "html.parser")
+        heading = soup.find("tbody", class_="total_row_body body_world").text
+        titles = heading.split("\n")
+        for i in titles[:]:
+            if i == "" or i[len(i) - 1].isdecimal() == False:
+                titles.remove(i)
+        data='''
+            À có rồi. Sau đây là thống kê mới nhất về tình hình dịch corona vi rút.
+            Tổng ca nhiễm: {0} 
+            Số ca nhiễm mới: {1} 
+            Số người thiệt mạng: {2} 
+            Số người tử vong mới trong ngày: {3}
+            Số người đã phục hồi: {4}
+            Số trường hợp nghi nhiễm: {5}
+            Số người đang được điều trị {6} 
+            '''.format(titles[0].replace(",","."),titles[1][1:].replace(",","."),titles[2].replace(",","."),titles[3][1:].replace(",","."),titles[4].replace(",","."),titles[5][1:].replace(",","."),titles[6].replace(",","."))
+        AI.Speak(data)
+        time.sleep(1)
+
+    #----------------------------help------------------------------------------------#
+    def help():
+        funct = """
+                Mình có các chức năng như sau:
+                1. Chào hỏi, giao tiếp 
+                2. Tìm kiếm thông tin thông qua từ khóa
+                3. Mở ứng dụng có sẵn
+                4. Cập nhật tin tức
+                5. Tìm hiểu về định danh, định nghĩa
+                6. Lịch trên thiết bị
+                7. Thông báo về thời tiết
+                8. Kiểm tra Email
+                Hết
+                """
+        AI.Speak(funct)
     #----------------------------main-----------------------------------------------------#
     def main():
         AI.Speak("Chào bạn tớ là Rybert. Tớ có thể giúp gì cho bạn")
@@ -130,21 +236,21 @@ class AI:
                 AI.dem+=1
                 if AI.dem==3:
                     AI.Speak("Nếu bạn không muốn nói gì thì thôi vậy, hẹn gặp lại.")
-                    break
+                    sys.exit(0)
                 AI.Speak("Tớ vẫn đang lắng nghe bạn đây. Bạn cần mình giúp gì không. Nếu không hãy nói tạm biệt.")
-            elif "Xin chào" in you:
+            elif "Xin chào" in you or "xin chào" in you:
                 AI.Speak("Chào bạn tớ là Rybert. Tớ có thể giúp gì cho bạn?")
-            elif "tạm biệt" in you:
+            elif "tạm biệt" in you or "Tạm biệt" in you:
                 AI.Speak("Tạm biệt bạn. Hẹn gặp lại.")
-                break
+                sys.exit(0)
             elif "Bạn tên" in you or "Tên bạn" in you or "Tên của bạn" in you:
                 AI.Speak("Tên của tớ là Rybert. Tớ có thể giúp gì cho bạn.")
             elif "giờ" in you:
                 AI.Speak("Bây giờ là " + datetime.datetime.now().strftime("%H:%M:%S")) # Time
-                time.sleep(2)
+                time.sleep(1)
             elif "ngày" in you:
-                AI.Speak("Hôm nay là " + datetime.date.today().strftime("%d/%m/20%y"))   # Date
-                time.sleep(2)
+                AI.Speak("Hôm nay là ngày" + datetime.date.today().strftime("%d/%m/20%y"))   # Date
+                time.sleep(1)
             elif "word" in you or "soạn thảo" in you:
                 AI.Speak("Word đang được mở")
                 os.startfile("C:\Program Files\Microsoft Office\Office16\WINWORD.EXE")  # Word
@@ -173,10 +279,6 @@ class AI:
                 AI.Speak("Instagram đang được mở")
                 webbrowser.open("https://www.instagram.com")
                 time.sleep(7)
-            elif "email" in you:
-                AI.Speak("Email đang được mở")
-                webbrowser.open("https://accounts.google.com/signin/v2/identifier?continue=https%3A%2F%2Fmail.google.com%2Fmail%2F&service=mail&sacu=1&rip=1&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
-                time.sleep(7)
             elif "Google Drive" in you:
                 AI.Speak("Google drive đang được mở")
                 webbrowser.open("https://www.google.com/intl/vi/drive")
@@ -187,12 +289,34 @@ class AI:
                 AI.Weather()
             elif "định nghĩa" in you or "ý nghĩa" in you:
                 AI.Wikipedia()
+            elif "đọc báo" in you or "tin tức" in you:
+                AI.News()
+            elif "tắt máy" in you or "shutdown" in you:
+                AI.Speak("tạm biệt")
+                os.system("shutdown /s")
+            elif "restart" in you or "khởi động" in you:
+                AI.Speak("máy tính sẽ được khởi động lại trong ít phút.")
+                os.system("shutdown /r")
+            elif "ngủ đông" in you:
+                os.system("shutdown /h")
+            elif "sleep" in you:
+                os.system("shutdown /l")
+            elif "email" in you or "Gmail" in you:
+                AI.Email()
+            elif "Corona" in you or "viêm đường hô hấp" in you or ("đại dịch" and "2019") in you:
+                AI.CoVid()
+            elif "chức năng" in you or "tính năng" in you:
+                AI.help()
             elif "chờ" in you:
                 AI.Sleep()
             else:
-                print("Tớ không hiểu cậu đang nói gì. Cậu muốn nói gì không?")
                 AI.Speak("Tớ không hiểu cậu đang nói gì. Cậu muốn nói gì không?")
 
 if __name__=="__main__":
-    bot=AI
-    bot.main()
+
+    t1 = threading.Thread(target=Creat_widgets)
+    t2 = threading.Thread(target=AI.main,daemon=True)
+    t1.start()
+    t2.start()
+
+
