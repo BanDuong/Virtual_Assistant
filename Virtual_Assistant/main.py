@@ -26,7 +26,7 @@ import threading
 
 def Creat_widgets():
     t = Tk()
-    t.title("Rybert")
+    t.title('Rybert')
     t.geometry("250x120+600+190")
     t.resizable(width=False, height=False)
     img = ImageTk.PhotoImage(Image.open("picAI.png"))
@@ -123,9 +123,9 @@ class AI:
         data = response.json()
         if data["cod"] != "404":
             city_res = data["main"]
-            temperature = city_res["temp"]
-            pressure = city_res["pressure"]
-            humidity = city_res["humidity"]
+            current_temperature = city_res["temp"]
+            current_pressure = city_res["pressure"]
+            current_humidity = city_res["humidity"]
             suntime = data["sys"]
             sunrise = datetime.datetime.fromtimestamp(suntime["sunrise"])
             sunset = datetime.datetime.fromtimestamp(suntime["sunset"])
@@ -145,9 +145,9 @@ class AI:
                    minrise=sunrise.minute,
                    hourset=sunset.hour,
                    minset=sunset.minute,
-                   temp=temperature,
-                   pressure=pressure,
-                   humidity=humidity)
+                   temp=current_temperature,
+                   pressure=current_pressure,
+                   humidity=current_humidity)
             AI.Speak(content)
             time.sleep(2)
         else:
@@ -158,15 +158,27 @@ class AI:
     def Wikipedia():
         AI.Speak("Bạn vui lòng nói từ khóa muốn tìm hiểu")
         you = AI.Ear()
+        print(you)
+        wikipedia.set_lang("vi")
         contents = wikipedia.summary(you).split(".")
-        AI.Speak("Theo như mình tìm hiểu được thì")
-        AI.Speak(contents[:2])
-        AI.Speak("Vẫn còn đấy, bạn muốn nghe tiếp chứ")
-        you = AI.Ear()
-        if "có" in you or "" in you:
-            AI.Speak(contents[2:])
+        for con in contents:
+            if con == '':
+                contents.remove(con)
+        print(contents)
+        if contents:
+            AI.Speak("Theo như mình tìm hiểu được thì")
+            for text in contents[:2]:
+                AI.Speak(text)
+            AI.Speak("Vẫn còn đấy, bạn muốn nghe tiếp chứ")
+            you = AI.Ear()
+            if "có" in you or "" in you or "đồng ý" in you:
+                for text in contents[2:]:
+                    AI.Speak(text)
+                AI.Speak('hết rồi. Bạn cần mình giúp gì nữa không')
+            else:
+                AI.Speak("Nếu cậu không muốn nghe tiếp thì thôi vậy. Bạn cần mình giúp gì nữa không")
         else:
-            AI.Speak("Nếu cậu không muốn nghe tiếp thì thôi vậy. Bạn cần mình giúp gì nữa không")
+            AI.Speak("xin lỗi thông tin bạn muốn tìm hiểu hiện không có hoặc bị sai, bạn có thể thử lại.")
         time.sleep(2)
 
     #----------------------News-------------------------------------#
@@ -177,10 +189,20 @@ class AI:
         heading = soup.findAll("h4", class_="story__heading")
         titles = [title.find('a').attrs["title"] for title in heading]
         AI.Speak("Sau đây là một số tin tức mới trong ngày.")
+        count =0
         for i in titles:
             AI.Speak(i)
+            count+=1
+            if count == 3:
+                count = 0
+                AI.Speak("bạn muốn nghe thêm tin tức chứ")
+                you = AI.Ear()
+                if "không" in you or "thôi" in you:
+                    break
+                else:
+                    continue
             time.sleep(1)
-        AI.Speak("bạn có muốn đọc tin tức không?")
+        AI.Speak("bạn có muốn tự mình xem những tin tức đó không?")
         you=AI.Ear()
         if "có" in you:
             webbrowser.open(baseUrl + "/tin-moi.epi")
@@ -287,7 +309,7 @@ class AI:
                 AI.GGSearch(you)
             elif "thời tiết" in you or "Thời tiết" in you:
                 AI.Weather()
-            elif "định nghĩa" in you or "ý nghĩa" in you:
+            elif "định nghĩa" in you or "ý nghĩa" in you or "gì" in you:
                 AI.Wikipedia()
             elif "đọc báo" in you or "tin tức" in you:
                 AI.News()
@@ -307,7 +329,7 @@ class AI:
                 AI.CoVid()
             elif "chức năng" in you or "tính năng" in you:
                 AI.help()
-            elif "chờ" in you:
+            elif "chờ" in you or "tạm dừng" in you:
                 AI.Sleep()
             else:
                 AI.Speak("Tớ không hiểu cậu đang nói gì. Cậu muốn nói gì không?")
@@ -318,5 +340,3 @@ if __name__=="__main__":
     t2 = threading.Thread(target=AI.main,daemon=True)
     t1.start()
     t2.start()
-
-
